@@ -14,10 +14,12 @@ import io.vertx.core.json.JsonObject;
 public class ClientMaster implements AsyncClientMaster {
     private TokenFactory serverToken = new TokenFactory(Config.SERVER_SECRET);
     private static final int SYNCHRONIZE_MS = 2500;
+    private InvitationMailer mailer;
     private Vertx vertx;
 
     public ClientMaster(Vertx vertx) {
         this.vertx = vertx;
+        this.mailer = new InvitationMailer(vertx);
     }
 
     @Override
@@ -49,9 +51,9 @@ public class ClientMaster implements AsyncClientMaster {
     public void create(Future<Void> future, Voting voting) {
 
         vertx.createHttpClient().post(Config.RECEIVER_PORT, "localhost", "/api/create", handler -> {
-            if (handler.statusCode() == HttpResponseStatus.OK.code())
-                future.complete();
-            else
+            if (handler.statusCode() == HttpResponseStatus.OK.code()) {
+                mailer.notify(future, voting);
+            } else
                 future.fail(handler.statusMessage());
 
         }).end(new JsonObject()
